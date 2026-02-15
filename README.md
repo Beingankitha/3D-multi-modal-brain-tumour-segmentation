@@ -1,7 +1,7 @@
 # 3D Multi-Modal Brain Tumour Segmentation
 
 [![CI](https://github.com/Beingankitha/3D-multi-modal-brain-tumour-segmentation/actions/workflows/ci.yml/badge.svg)](https://github.com/Beingankitha/3D-multi-modal-brain-tumour-segmentation/actions/workflows/ci.yml)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Production-quality research codebase for 3D multi-modal brain tumour segmentation with explainability using PyTorch and MONAI.
@@ -39,7 +39,7 @@ Production-quality research codebase for 3D multi-modal brain tumour segmentatio
 
 ### Requirements
 
-- Python 3.8+
+- Python 3.10+
 - PyTorch 2.0+
 - MONAI 1.3+
 
