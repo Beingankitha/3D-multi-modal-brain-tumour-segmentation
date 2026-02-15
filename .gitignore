@@ -47,8 +47,8 @@ env/
 *.pkl
 
 # Data & Datasets (DO NOT COMMIT)
-data/
-datasets/
+/data/
+/datasets/
 Task01_BrainTumour/
 Task01_BrainTumour.tar
 *.nii
