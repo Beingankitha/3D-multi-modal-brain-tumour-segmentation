@@ -1,0 +1,181 @@
+# Default configuration for 3D Brain Tumour Segmentation
+# Medical Segmentation Decathlon - Task01_BrainTumour
+
+# Dataset configuration
+data:
+  root_dir: "./data/Task01_BrainTumour"  # Path to MSD Task01 dataset
+  cache_dir: null  # Optional cache directory for preprocessed data
+  num_workers: 4
+  pin_memory: true
+  
+  # Modalities: T1, T1Gd, T2, FLAIR (4 channels)
+  modalities: ["t1", "t1ce", "t2", "flair"]
+  
+  # Labels: 0=background, 1=necrotic/non-enhancing tumor, 2=edema, 3=enhancing tumor
+  # Regions: WT (Whole Tumor) = 1+2+3, TC (Tumor Core) = 1+3, ET (Enhancing Tumor) = 3
+  num_classes: 4
+  
+  # Data splits
+  train_split: 0.7
+  val_split: 0.15
+  test_split: 0.15
+  
+  # Random seed for reproducibility
+  seed: 42
+
+# Data preprocessing & augmentation
+transforms:
+  # Spatial size for training (smaller for memory efficiency)
+  spatial_size: [128, 128, 128]
+  
+  # Intensity normalization
+  intensity_norm:
+    type: "zscore"  # Options: zscore, minmax, percentile
+    
+  # Training augmentations
+  train_augmentation:
+    rand_rotate_prob: 0.2
+    rand_flip_prob: 0.5
+    rand_scale_prob: 0.2
+    rand_shift_prob: 0.2
+    rand_gaussian_noise_prob: 0.15
+    rand_gaussian_smooth_prob: 0.15
+    
+  # Validation/Test (minimal augmentation)
+  val_augmentation:
+    enabled: false
+
+# Model architecture
+model:
+  name: "unet"  # Options: unet, unet_plusplus, swinunetr, etc.
+  
+  # 3D U-Net parameters
+  spatial_dims: 3
+  in_channels: 4  # 4 modalities
+  out_channels: 4  # 4 classes (background + 3 tumor regions)
+  channels: [32, 64, 128, 256, 512]
+  strides: [2, 2, 2, 2]
+  num_res_units: 2
+  dropout: 0.1
+  
+  # Pretrained weights (optional)
+  pretrained: null
+
+# Training configuration
+training:
+  # Device configuration (auto-detected: cuda, mps, or cpu)
+  device: "auto"
+  
+  # Batch size and epochs
+  batch_size: 2  # Adjust based on GPU memory
+  num_epochs: 300
+  
+  # Validation frequency
+  val_interval: 5
+  save_interval: 10
+  
+  # Loss function
+  loss:
+    type: "dice_ce"  # Options: dice, dice_ce, focal
+    dice_weight: 0.5
+    ce_weight: 0.5
+    include_background: false
+    
+  # Optimizer
+  optimizer:
+    type: "adam"  # Options: adam, adamw, sgd
+    lr: 1e-4
+    weight_decay: 1e-5
+    
+  # Learning rate scheduler
+  scheduler:
+    type: "cosine"  # Options: cosine, step, plateau
+    warmup_epochs: 10
+    min_lr: 1e-6
+    
+  # Early stopping
+  early_stopping:
+    enabled: true
+    patience: 50
+    metric: "val_dice"
+    mode: "max"
+  
+  # Mixed precision training
+  amp: true
+  
+  # Gradient clipping
+  grad_clip:
+    enabled: true
+    max_norm: 1.0
+
+# Inference configuration
+inference:
+  # Sliding window inference for large volumes
+  sliding_window:
+    enabled: true
+    roi_size: [128, 128, 128]
+    overlap: 0.5
+    mode: "gaussian"
+    
+  # Post-processing
+  post_processing:
+    remove_small_objects: true
+    min_size: 64
+
+# Evaluation metrics
+metrics:
+  # Primary metrics for validation
+  primary: ["dice", "iou"]
+  
+  # Additional metrics for evaluation
+  additional: ["hausdorff95", "surface_distance"]
+  
+  # Per-class evaluation
+  per_class: true
+  
+  # Regions to evaluate (WT, TC, ET)
+  regions:
+    whole_tumor: [1, 2, 3]  # WT
+    tumor_core: [1, 3]       # TC
+    enhancing_tumor: [3]     # ET
+
+# Explainability configuration
+explainability:
+  # Methods to use
+  methods: ["occlusion", "gradcam", "saliency"]
+  
+  # Occlusion sensitivity
+  occlusion:
+    patch_size: [16, 16, 16]
+    stride: [8, 8, 8]
+    
+  # GradCAM settings
+  gradcam:
+    target_layers: ["model.encoder.blocks.3"]
+
+# Logging and checkpointing
+logging:
+  # Experiment tracking
+  use_tensorboard: true
+  use_wandb: false  # Set to true to enable Weights & Biases
+  
+  # Wandb configuration (if enabled)
+  wandb:
+    project: "brain-tumor-segmentation"
+    entity: null
+    tags: ["msd", "task01", "3d-unet"]
+    
+  # Output directories
+  output_dir: "./outputs"
+  checkpoint_dir: "./checkpoints"
+  log_dir: "./logs"
+  
+  # Checkpoint saving
+  save_best_only: false
+  save_last: true
+
+# Reproducibility
+reproducibility:
+  deterministic: true
+  benchmark: false  # Set to true for faster training if reproducibility not critical
+  seed: 42
