@@ -1,8 +1,8 @@
 """Model module exports."""
 
 from .model import (
-    build_model,
     BrainTumorSegmentationModel,
+    build_model,
     initialize_weights,
 )
 

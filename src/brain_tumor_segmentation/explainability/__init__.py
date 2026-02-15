@@ -1,8 +1,8 @@
 """Explainability module exports."""
 
 from .explainer import (
-    OcclusionSensitivity,
     GradCAM,
+    OcclusionSensitivity,
     SaliencyMap,
 )
 

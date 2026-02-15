@@ -1,6 +1,6 @@
 """Training module exports."""
 
-from .losses import get_loss_function, CombinedLoss
+from .losses import CombinedLoss, get_loss_function
 from .metrics import SegmentationMetrics, compute_hausdorff_distance
 from .trainer import Trainer
 

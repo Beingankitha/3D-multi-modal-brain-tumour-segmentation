@@ -1,32 +1,33 @@
 """Configuration management using OmegaConf."""
 
-from omegaconf import OmegaConf, DictConfig
-from typing import Optional, Union
 import os
+from typing import Optional, Union
+
+from omegaconf import DictConfig, OmegaConf
 
 
 def load_config(config_path: str, overrides: Optional[list] = None) -> DictConfig:
     """
     Load configuration from YAML file with optional overrides.
-    
+
     Args:
         config_path: Path to configuration YAML file
         overrides: Optional list of override strings (e.g., ["training.batch_size=4"])
-    
+
     Returns:
         DictConfig: Configuration object
     """
     # Load base config
     config = OmegaConf.load(config_path)
-    
+
     # Apply overrides
     if overrides:
         override_conf = OmegaConf.from_dotlist(overrides)
         config = OmegaConf.merge(config, override_conf)
-    
+
     # Resolve any interpolations
     OmegaConf.resolve(config)
-    
+
     return config
 
 

@@ -2,12 +2,7 @@
 
 __version__ = "0.1.0"
 
-from . import data
-from . import models
-from . import training
-from . import inference
-from . import explainability
-from . import utils
+from . import data, explainability, inference, models, training, utils
 
 __all__ = [
     "data",

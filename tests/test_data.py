@@ -1,10 +1,11 @@
 """Tests for data loading and transforms."""
 
-import pytest
-import torch
-import numpy as np
 import sys
 from pathlib import Path
+
+import numpy as np
+import pytest
+import torch
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
@@ -16,15 +17,15 @@ def test_simple_transform():
     # Create dummy data
     image = np.random.rand(4, 128, 128, 128).astype(np.float32)
     label = np.random.randint(0, 4, size=(128, 128, 128)).astype(np.int64)
-    
+
     sample = {
         "image": image,
         "label": label,
     }
-    
+
     # Apply transform
     transformed = simple_transform(sample)
-    
+
     # Check output types and shapes
     assert isinstance(transformed["image"], torch.Tensor)
     assert isinstance(transformed["label"], torch.Tensor)
@@ -43,10 +44,10 @@ def test_brain_tumor_dataset():
             "label": "dummy_label.nii.gz",
         }
     ]
-    
+
     # Initialize dataset (without loading actual files)
     dataset = BrainTumorDataset(data_list, transform=None, cache_data=False)
-    
+
     # Check properties
     assert len(dataset) == 1
     assert dataset.data_list == data_list

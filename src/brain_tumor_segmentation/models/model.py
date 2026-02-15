@@ -1,9 +1,10 @@
 """3D U-Net model for brain tumor segmentation."""
 
+from typing import Optional, Sequence
+
 import torch
 import torch.nn as nn
-from monai.networks.nets import UNet, SwinUNETR
-from typing import Sequence, Optional
+from monai.networks.nets import SwinUNETR, UNet
 
 
 def build_model(
@@ -20,7 +21,7 @@ def build_model(
 ) -> nn.Module:
     """
     Build a 3D segmentation model.
-    
+
     Args:
         model_name: Name of the model architecture ("unet", "swinunetr")
         spatial_dims: Number of spatial dimensions (3 for 3D)
@@ -32,7 +33,7 @@ def build_model(
         dropout: Dropout rate
         pretrained: Path to pretrained weights (optional)
         **kwargs: Additional model-specific arguments
-    
+
     Returns:
         PyTorch model
     """
@@ -50,7 +51,7 @@ def build_model(
         # Swin UNETR - Transformer-based architecture
         img_size = kwargs.get("img_size", (128, 128, 128))
         feature_size = kwargs.get("feature_size", 48)
-        
+
         model = SwinUNETR(
             img_size=img_size,
             in_channels=in_channels,
@@ -61,13 +62,13 @@ def build_model(
         )
     else:
         raise ValueError(f"Unknown model name: {model_name}")
-    
+
     # Load pretrained weights if provided
     if pretrained is not None and pretrained != "":
         print(f"Loading pretrained weights from {pretrained}")
         state_dict = torch.load(pretrained, map_location="cpu")
         model.load_state_dict(state_dict, strict=False)
-    
+
     return model
 
 
@@ -75,7 +76,7 @@ class BrainTumorSegmentationModel(nn.Module):
     """
     Wrapper model for brain tumor segmentation with additional functionality.
     """
-    
+
     def __init__(
         self,
         backbone: nn.Module,
@@ -92,18 +93,18 @@ class BrainTumorSegmentationModel(nn.Module):
         self.backbone = backbone
         self.num_classes = num_classes
         self.deep_supervision = deep_supervision
-        
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass."""
         return self.backbone(x)
-    
+
     def predict(self, x: torch.Tensor) -> torch.Tensor:
         """
         Prediction with post-processing.
-        
+
         Args:
             x: Input tensor [B, C, H, W, D]
-        
+
         Returns:
             Predicted segmentation mask [B, H, W, D]
         """
@@ -113,43 +114,43 @@ class BrainTumorSegmentationModel(nn.Module):
             probs = torch.softmax(logits, dim=1)
             pred = torch.argmax(probs, dim=1)
         return pred
-    
+
     def get_feature_maps(self, x: torch.Tensor, layer_name: str) -> torch.Tensor:
         """
         Extract feature maps from a specific layer.
         Useful for visualization and explainability.
-        
+
         Args:
             x: Input tensor
             layer_name: Name of the layer to extract features from
-        
+
         Returns:
             Feature maps from the specified layer
         """
         features = {}
-        
+
         def hook_fn(module, input, output):
             features["output"] = output
-        
+
         # Register hook
         for name, module in self.backbone.named_modules():
             if name == layer_name:
                 handle = module.register_forward_hook(hook_fn)
                 break
-        
+
         # Forward pass
         _ = self.forward(x)
-        
+
         # Remove hook
         handle.remove()
-        
+
         return features.get("output", None)
 
 
 def initialize_weights(model: nn.Module, init_type: str = "kaiming"):
     """
     Initialize model weights.
-    
+
     Args:
         model: PyTorch model
         init_type: Initialization method ("kaiming", "xavier", "normal")
@@ -162,10 +163,10 @@ def initialize_weights(model: nn.Module, init_type: str = "kaiming"):
                 nn.init.xavier_normal_(m.weight)
             elif init_type == "normal":
                 nn.init.normal_(m.weight, 0, 0.02)
-            
+
             if m.bias is not None:
                 nn.init.constant_(m.bias, 0)
-        
+
         elif isinstance(m, (nn.BatchNorm3d, nn.GroupNorm, nn.InstanceNorm3d)):
             if m.weight is not None:
                 nn.init.constant_(m.weight, 1)

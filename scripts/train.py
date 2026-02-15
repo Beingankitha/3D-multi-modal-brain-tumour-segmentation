@@ -4,27 +4,29 @@
 import argparse
 import sys
 from pathlib import Path
+
 import torch
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from brain_tumor_segmentation.utils import get_device, set_seed, create_directory
-from brain_tumor_segmentation.utils.config import load_config, save_config
 from brain_tumor_segmentation.data import (
-    load_msd_task01_data,
     create_data_loaders,
+    load_msd_task01_data,
     simple_transform,
 )
 from brain_tumor_segmentation.models import build_model
 from brain_tumor_segmentation.training import (
-    get_loss_function,
     SegmentationMetrics,
     Trainer,
+    get_loss_function,
 )
+from brain_tumor_segmentation.utils import create_directory, get_device, set_seed
+from brain_tumor_segmentation.utils.config import load_config, save_config
 
 try:
     from torch.utils.tensorboard import SummaryWriter
+
     HAS_TENSORBOARD = True
 except ImportError:
     HAS_TENSORBOARD = False
@@ -69,41 +71,41 @@ def main():
         nargs="*",
         help="Config overrides (e.g., training.batch_size=4)",
     )
-    
+
     args = parser.parse_args()
-    
+
     # Load configuration
     print(f"Loading configuration from {args.config}")
     config = load_config(args.config, args.overrides)
-    
+
     # Override from command line
     if args.data_root:
         config.data.root_dir = args.data_root
     if args.output_dir:
         config.logging.output_dir = args.output_dir
-    
+
     # Set device
     if args.device != "auto":
         config.training.device = args.device
     device = get_device(config.training.device)
-    
+
     # Set random seed
     set_seed(
         config.reproducibility.seed,
         config.reproducibility.deterministic,
         config.reproducibility.benchmark,
     )
-    
+
     # Create output directories
     create_directory(config.logging.output_dir)
     create_directory(config.logging.checkpoint_dir)
     create_directory(config.logging.log_dir)
-    
+
     # Save configuration
     config_save_path = Path(config.logging.output_dir) / "config.yaml"
     save_config(config, str(config_save_path))
     print(f"Configuration saved to {config_save_path}")
-    
+
     # Load dataset
     print(f"\nLoading dataset from {config.data.root_dir}")
     try:
@@ -121,7 +123,7 @@ def main():
         print("2. Extract to: ./data/Task01_BrainTumour/")
         print("3. Or specify path with --data-root")
         return
-    
+
     # Create data loaders
     print("\nCreating data loaders...")
     train_loader, val_loader, test_loader = create_data_loaders(
@@ -134,11 +136,11 @@ def main():
         num_workers=config.data.num_workers,
         pin_memory=config.data.pin_memory,
     )
-    
+
     print(f"Train batches: {len(train_loader)}")
     print(f"Val batches: {len(val_loader)}")
     print(f"Test batches: {len(test_loader)}")
-    
+
     # Build model
     print("\nBuilding model...")
     model = build_model(
@@ -152,11 +154,11 @@ def main():
         dropout=config.model.dropout,
         pretrained=config.model.pretrained,
     )
-    
+
     # Count parameters
     num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Model parameters: {num_params:,}")
-    
+
     # Create loss function
     loss_fn = get_loss_function(
         loss_type=config.training.loss.type,
@@ -164,7 +166,7 @@ def main():
         ce_weight=config.training.loss.ce_weight,
         include_background=config.training.loss.include_background,
     )
-    
+
     # Create optimizer
     if config.training.optimizer.type.lower() == "adam":
         optimizer = torch.optim.Adam(
@@ -187,7 +189,7 @@ def main():
         )
     else:
         raise ValueError(f"Unknown optimizer: {config.training.optimizer.type}")
-    
+
     # Create scheduler
     scheduler = None
     if config.training.scheduler.type.lower() == "cosine":
@@ -202,13 +204,13 @@ def main():
             step_size=30,
             gamma=0.1,
         )
-    
+
     # Create metrics
     metrics = SegmentationMetrics(
         num_classes=config.data.num_classes,
         include_background=False,
     )
-    
+
     # Create trainer
     print("\nInitializing trainer...")
     trainer = Trainer(
@@ -219,24 +221,30 @@ def main():
         metrics=metrics,
         scheduler=scheduler,
         amp=config.training.amp and device.type == "cuda",
-        grad_clip_max_norm=config.training.grad_clip.max_norm if config.training.grad_clip.enabled else None,
+        grad_clip_max_norm=(
+            config.training.grad_clip.max_norm
+            if config.training.grad_clip.enabled
+            else None
+        ),
         checkpoint_dir=config.logging.checkpoint_dir,
         log_dir=config.logging.log_dir,
     )
-    
+
     # Resume from checkpoint if specified
     if args.resume:
         print(f"Resuming from checkpoint: {args.resume}")
         trainer.load_checkpoint(args.resume)
-    
+
     # TensorBoard writer
     writer = None
     if config.logging.use_tensorboard and HAS_TENSORBOARD:
         writer = SummaryWriter(log_dir=config.logging.log_dir)
         print(f"TensorBoard logs: {config.logging.log_dir}")
     elif config.logging.use_tensorboard and not HAS_TENSORBOARD:
-        print("Warning: TensorBoard not installed. Install with: pip install tensorboard")
-    
+        print(
+            "Warning: TensorBoard not installed. Install with: pip install tensorboard"
+        )
+
     # Training loop
     print("\nStarting training...")
     print(f"Device: {device}")
@@ -244,36 +252,36 @@ def main():
     print(f"Epochs: {config.training.num_epochs}")
     print(f"Batch size: {config.training.batch_size}")
     print("-" * 60)
-    
+
     best_val_dice = 0.0
     patience_counter = 0
-    
+
     for epoch in range(trainer.epoch, config.training.num_epochs):
         trainer.epoch = epoch + 1
-        
+
         # Train
         train_metrics = trainer.train_epoch(train_loader)
-        
+
         # Validate
         if (epoch + 1) % config.training.val_interval == 0:
             val_metrics = trainer.validate(val_loader)
-            
+
             # Logging
             print(f"\nEpoch {epoch + 1}/{config.training.num_epochs}")
             print(f"Train Loss: {train_metrics['train_loss']:.4f}")
             print(f"Val Loss: {val_metrics['val_loss']:.4f}")
             print(f"Val Dice: {val_metrics['val_dice']:.4f}")
-            
+
             if writer:
                 writer.add_scalar("Loss/train", train_metrics["train_loss"], epoch + 1)
                 writer.add_scalar("Loss/val", val_metrics["val_loss"], epoch + 1)
                 writer.add_scalar("Dice/val", val_metrics["val_dice"], epoch + 1)
                 writer.add_scalar("LR", optimizer.param_groups[0]["lr"], epoch + 1)
-            
+
             # Save checkpoint
             if (epoch + 1) % config.training.save_interval == 0:
                 trainer.save_checkpoint(f"checkpoint_epoch_{epoch + 1}.pth")
-            
+
             # Save best model
             is_best = val_metrics["val_dice"] > best_val_dice
             if is_best:
@@ -284,23 +292,23 @@ def main():
                 print(f"New best model! Val Dice: {best_val_dice:.4f}")
             else:
                 patience_counter += 1
-            
+
             # Early stopping
             if config.training.early_stopping.enabled:
                 if patience_counter >= config.training.early_stopping.patience:
                     print(f"\nEarly stopping triggered after {epoch + 1} epochs")
                     break
-        
+
         # Update scheduler
         if scheduler is not None:
             scheduler.step()
-    
+
     print("\n" + "=" * 60)
     print("Training completed!")
     print(f"Best validation Dice: {best_val_dice:.4f}")
     print(f"Checkpoints saved to: {config.logging.checkpoint_dir}")
     print("=" * 60)
-    
+
     if writer:
         writer.close()
 
