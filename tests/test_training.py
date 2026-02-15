@@ -19,7 +19,7 @@ def test_dice_loss():
     
     # Create dummy data
     pred = torch.randn(2, 4, 32, 32, 32)
-    target = torch.randint(0, 4, (2, 32, 32, 32))
+    target = torch.randint(0, 4, (2, 1, 32, 32, 32))  # Need channel dimension
     
     loss = loss_fn(pred, target)
     
@@ -38,7 +38,7 @@ def test_combined_loss():
     
     # Create dummy data
     pred = torch.randn(2, 4, 32, 32, 32)
-    target = torch.randint(0, 4, (2, 32, 32, 32))
+    target = torch.randint(0, 4, (2, 1, 32, 32, 32))  # Need channel dimension
     
     loss = loss_fn(pred, target)
     
@@ -52,11 +52,11 @@ def test_segmentation_metrics():
     
     # Create dummy data
     pred = torch.randn(2, 4, 32, 32, 32)
-    target = torch.randint(0, 4, (2, 32, 32, 32))
+    target = torch.randint(0, 4, (2, 1, 32, 32, 32))  # Need channel dimension
     
     # Compute Dice
     dice_scores = metrics.compute_dice(pred, target)
-    assert dice_scores.shape[0] == 3  # 3 non-background classes
+    assert dice_scores.shape == (2, 3)  # batch_size=2, 3 non-background classes
     
     # Compute IoU
     iou_scores = metrics.compute_iou(pred, target)

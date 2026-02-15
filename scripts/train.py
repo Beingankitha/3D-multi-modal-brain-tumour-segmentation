@@ -5,7 +5,6 @@ import argparse
 import sys
 from pathlib import Path
 import torch
-from torch.utils.tensorboard import SummaryWriter
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -23,6 +22,12 @@ from brain_tumor_segmentation.training import (
     SegmentationMetrics,
     Trainer,
 )
+
+try:
+    from torch.utils.tensorboard import SummaryWriter
+    HAS_TENSORBOARD = True
+except ImportError:
+    HAS_TENSORBOARD = False
 
 
 def main():
@@ -226,9 +231,11 @@ def main():
     
     # TensorBoard writer
     writer = None
-    if config.logging.use_tensorboard:
+    if config.logging.use_tensorboard and HAS_TENSORBOARD:
         writer = SummaryWriter(log_dir=config.logging.log_dir)
         print(f"TensorBoard logs: {config.logging.log_dir}")
+    elif config.logging.use_tensorboard and not HAS_TENSORBOARD:
+        print("Warning: TensorBoard not installed. Install with: pip install tensorboard")
     
     # Training loop
     print("\nStarting training...")

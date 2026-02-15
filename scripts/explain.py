@@ -7,7 +7,6 @@ from pathlib import Path
 import torch
 import nibabel as nib
 import numpy as np
-import matplotlib.pyplot as plt
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
@@ -20,9 +19,19 @@ from brain_tumor_segmentation.explainability import (
     SaliencyMap,
 )
 
+try:
+    import matplotlib.pyplot as plt
+    HAS_MATPLOTLIB = True
+except ImportError:
+    HAS_MATPLOTLIB = False
+
 
 def save_slice_visualization(image_3d, output_path, title="", cmap="hot"):
     """Save a middle slice visualization."""
+    if not HAS_MATPLOTLIB:
+        print("Warning: matplotlib not installed. Skipping visualization.")
+        return
+        
     mid_slice = image_3d.shape[2] // 2
     plt.figure(figsize=(10, 8))
     plt.imshow(image_3d[:, :, mid_slice].T, cmap=cmap, origin="lower")
